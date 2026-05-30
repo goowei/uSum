@@ -29,6 +29,28 @@ def _date_str(yyyymmdd) -> str:
     return f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
 
 
+def _meta_block(r: VideoResult) -> str:
+    info = r.info
+    return (
+        f"- **Channel:** {info.uploader or 'unknown'}  \n"
+        f"- **Duration:** {_duration_str(info.duration)}  \n"
+        f"- **Published:** {_date_str(info.upload_date)}  \n"
+        f"- **URL:** {info.url}  \n"
+        f"- **Transcript source:** {r.transcript_source}"
+    )
+
+
+def build_video_markdown(r: VideoResult, heading_level: int = 2) -> str:
+    """Markdown for a single video: title heading + metadata + summary."""
+    h = "#" * heading_level
+    lines = [f"{h} {r.info.title}", "", _meta_block(r), ""]
+    if r.error:
+        lines.append(f"> ⚠️ Could not summarise this video: {r.error}")
+    else:
+        lines.append(r.summary_markdown.strip())
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def build_markdown(results: List[VideoResult], generated_on: str) -> str:
     lines: List[str] = []
     lines.append("# uSum — YouTube Summary Report")
@@ -42,24 +64,7 @@ def build_markdown(results: List[VideoResult], generated_on: str) -> str:
         lines.append("")
 
     for r in results:
-        info = r.info
-        lines.append(f"## {info.title}")
-        lines.append("")
-        meta = (
-            f"- **Channel:** {info.uploader or 'unknown'}  \n"
-            f"- **Duration:** {_duration_str(info.duration)}  \n"
-            f"- **Published:** {_date_str(info.upload_date)}  \n"
-            f"- **URL:** {info.url}  \n"
-            f"- **Transcript source:** {r.transcript_source}"
-        )
-        lines.append(meta)
-        lines.append("")
-        if r.error:
-            lines.append(f"> ⚠️ Could not summarise this video: {r.error}")
-            lines.append("")
-            continue
-        lines.append(r.summary_markdown.strip())
-        lines.append("")
+        lines.append(build_video_markdown(r, heading_level=2))
         lines.append("---")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"

@@ -108,6 +108,31 @@ Output is written as `out/uSum-report-<timestamp>.{md,docx,pdf}` with transcript
 
 ---
 
+## Push straight to OneNote (optional)
+
+Instead of pasting Markdown, uSum can create a OneNote page per video via the
+Microsoft Graph API.
+
+**One-time setup:**
+1. Go to <https://entra.microsoft.com> ▸ *App registrations* ▸ *New registration*.
+   Give it any name; under *Supported account types* pick the option that includes
+   personal Microsoft accounts if that's where your notebooks live.
+2. In the app's *Authentication* page, enable **Allow public client flows**.
+3. In *API permissions*, add **Microsoft Graph ▸ Delegated ▸ Notes.ReadWrite**.
+4. Copy the **Application (client) ID** into `.env` as `USUM_MS_CLIENT_ID` (or pass
+   `--onenote-client-id`).
+
+**Use it:**
+```bash
+python -m usum https://youtu.be/VIDEO --onenote \
+    --onenote-notebook "uSum" --onenote-section "Summaries"
+```
+The first run prints a microsoft.com/devicelogin code to sign in once; the token is
+cached under `~/.usum/` for subsequent runs. Each summarised video becomes its own
+page in the chosen notebook/section.
+
+---
+
 ## How it's structured
 
 ```

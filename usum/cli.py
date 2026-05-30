@@ -74,6 +74,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("-v", "--verbose", action="store_true", help="Verbose logging.")
     p.add_argument("--version", action="version", version=f"uSum {__version__}")
+
+    onenote = p.add_argument_group("OneNote push (Microsoft Graph)")
+    onenote.add_argument(
+        "--onenote",
+        action="store_true",
+        help="Also push each summary as a OneNote page (one page per video).",
+    )
+    onenote.add_argument(
+        "--onenote-client-id",
+        help="Microsoft app (client) ID, else USUM_MS_CLIENT_ID.",
+    )
+    onenote.add_argument(
+        "--onenote-notebook", default="uSum", help="Target notebook (default: uSum)."
+    )
+    onenote.add_argument(
+        "--onenote-section", default="Summaries", help="Target section (default: Summaries)."
+    )
     return p
 
 
@@ -180,9 +197,48 @@ def main(argv=None) -> int:
         print("Output files:")
         for p in written:
             print(f"  {p}")
-    if "md" in args.formats:
+
+    if args.onenote:
+        _push_onenote(results, args)
+    elif "md" in args.formats:
         print("\nTip: open the .md file and paste it into a OneNote page.")
     return 0 if failed == 0 else 1
+
+
+def _push_onenote(results: List[VideoResult], args) -> None:
+    from .onenote import get_client_id, push_pages
+    from .render import build_video_markdown
+
+    try:
+        client_id = get_client_id(args.onenote_client_id)
+    except RuntimeError as exc:
+        log.error("%s", exc)
+        return
+
+    pages = [
+        (r.info.title, build_video_markdown(r, heading_level=1))
+        for r in results
+        if r.ok
+    ]
+    if not pages:
+        log.warning("No successful summaries to push to OneNote.")
+        return
+
+    try:
+        urls = push_pages(
+            pages,
+            client_id=client_id,
+            notebook=args.onenote_notebook,
+            section=args.onenote_section,
+        )
+    except RuntimeError as exc:
+        log.error("OneNote push failed: %s", exc)
+        return
+
+    if urls:
+        print(f"\nPushed {len(urls)} page(s) to OneNote (notebook '{args.onenote_notebook}'):")
+        for u in urls:
+            print(f"  {u}")
 
 
 if __name__ == "__main__":

@@ -11,3 +11,7 @@ markdown>=3.5
 
 # Audio fallback (no-captions videos). Heavy; optional but installed by default.
 faster-whisper>=1.0
+
+# OneNote push via Microsoft Graph (optional; only needed with --onenote)
+msal>=1.28
+requests>=2.31
