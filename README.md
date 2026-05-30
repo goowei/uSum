@@ -27,7 +27,10 @@ URL ─▶ yt-dlp (metadata)
    └─▶ captions ──(none?)──▶ yt-dlp audio + faster-whisper
             │
             ▼
-      Claude API ─▶ structured Markdown ─▶ .md / .docx / .pdf / transcript .txt
+   Claude (CLI subscription or API) ─▶ structured Markdown
+            │
+            ▼
+   .md / .docx / .pdf / transcript .txt  (+ optional OneNote page)
 ```
 
 ### Output formats
@@ -148,10 +151,12 @@ page in the chosen notebook/section.
 usum/
   cli.py          # argument parsing + orchestration
   config.py       # API key / model resolution (.env)
+  backends.py     # CLI (subscription) and API summarisation backends
   models.py       # VideoInfo / TranscriptSegment / VideoResult
   transcript.py   # yt-dlp metadata, captions, Whisper fallback
   summarize.py    # Claude prompt + map-reduce for long videos
   render.py       # Markdown / docx / pdf / transcript writers
+  onenote.py      # optional Microsoft Graph OneNote push
 ```
 
 ## Notes & limitations
