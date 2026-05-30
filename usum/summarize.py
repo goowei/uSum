@@ -75,29 +75,22 @@ def _chunks(text: str, size: int) -> List[str]:
     return out
 
 
-def _call(client, model: str, system: str, user: str, max_tokens: int = 4096) -> str:
-    resp = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": user}],
-    )
-    return "".join(block.text for block in resp.content if block.type == "text").strip()
-
-
 def summarize(
-    client,
-    model: str,
+    backend,
     info: VideoInfo,
     segments: List[TranscriptSegment],
 ) -> str:
-    """Return a Markdown report body (no top-level title)."""
+    """Return a Markdown report body (no top-level title).
+
+    ``backend`` is any object with ``complete(system, user, max_tokens) -> str``
+    (see usum.backends).
+    """
     transcript = transcript_to_text(segments, with_timestamps=True)
     header = f"Video title: {info.title}\nChannel: {info.uploader or 'unknown'}\n\n"
 
     if len(transcript) <= SINGLE_PASS_CHARS:
         user = f"{header}Transcript:\n\n{transcript}"
-        return _call(client, model, SYSTEM_PROMPT, user, max_tokens=4096)
+        return backend.complete(SYSTEM_PROMPT, user, max_tokens=4096)
 
     # Map-reduce for very long videos.
     log.info("Long transcript (%d chars) — using map-reduce summarisation.", len(transcript))
@@ -111,9 +104,7 @@ def summarize(
     for i, part in enumerate(parts, 1):
         log.info("Summarising segment %d/%d...", i, len(parts))
         notes.append(
-            _call(
-                client,
-                model,
+            backend.complete(
                 map_system,
                 f"{header}Segment {i} of {len(parts)}:\n\n{part}",
                 max_tokens=2048,
@@ -124,4 +115,4 @@ def summarize(
         f"{header}Below are ordered notes covering the whole video. Synthesise them into "
         f"the final report.\n\nNotes:\n\n{combined}"
     )
-    return _call(client, model, SYSTEM_PROMPT, user, max_tokens=4096)
+    return backend.complete(SYSTEM_PROMPT, user, max_tokens=4096)

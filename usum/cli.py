@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import List
 
 from . import __version__
-from .config import DEFAULT_MODEL, DEFAULT_WHISPER_MODEL, get_api_key
+from .config import DEFAULT_WHISPER_MODEL
 from .models import VideoResult
 from .render import render_outputs
 from .summarize import summarize
@@ -55,8 +55,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated output formats: md,docx,pdf,txt (default: md,txt).",
     )
     p.add_argument("-o", "--out", default="out", help="Output directory (default: ./out).")
-    p.add_argument("--model", default=DEFAULT_MODEL, help=f"Claude model (default: {DEFAULT_MODEL}).")
-    p.add_argument("--api-key", help="Anthropic API key (else ANTHROPIC_API_KEY / .env).")
+    p.add_argument(
+        "--backend",
+        choices=["auto", "cli", "api"],
+        default="auto",
+        help="Summariser: 'cli' uses your Claude Code subscription (no API key); "
+        "'api' uses the Anthropic API (needs a key); 'auto' (default) prefers a key "
+        "if set, else the CLI.",
+    )
+    p.add_argument(
+        "--model",
+        default=None,
+        help="Claude model. Defaults per backend (api: claude-sonnet-4-6, cli: sonnet) "
+        "or USUM_MODEL.",
+    )
+    p.add_argument("--api-key", help="Anthropic API key for the api backend (else ANTHROPIC_API_KEY / .env).")
     p.add_argument(
         "--lang",
         default="en",
@@ -96,8 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def process_url(
     url: str,
-    client,
-    model: str,
+    backend,
     languages: List[str],
     use_whisper: bool,
     whisper_model: str,
@@ -127,7 +139,7 @@ def process_url(
             return result
 
         log.info("Summarising '%s' (%s)...", info.title, source)
-        result.summary_markdown = summarize(client, model, info, segments)
+        result.summary_markdown = summarize(backend, info, segments)
     except Exception as exc:
         result.error = f"summarisation error: {exc}"
         log.error("Failed on %s: %s", info.title, exc)
@@ -140,6 +152,9 @@ def main(argv=None) -> int:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s %(name)s: %(message)s",
     )
+    # Quiet noisy third-party loggers even in verbose mode.
+    for noisy in ("fontTools", "fpdf", "MARKDOWN", "httpx", "httpcore", "anthropic", "urllib3"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
     urls: List[str] = list(args.urls)
     if args.input:
@@ -156,24 +171,21 @@ def main(argv=None) -> int:
         log.error("No URLs given. Pass URLs as arguments or use --input FILE.")
         return 2
 
+    import os
+
+    from .backends import BackendError, choose_backend
+
+    model = args.model or os.environ.get("USUM_MODEL")
     try:
-        api_key = get_api_key(args.api_key)
-    except RuntimeError as exc:
+        backend = choose_backend(args.backend, model, args.api_key)
+    except (RuntimeError, BackendError) as exc:
         log.error("%s", exc)
         return 2
-
-    try:
-        from anthropic import Anthropic
-    except ImportError:
-        log.error("The 'anthropic' package is not installed. Run: pip install anthropic")
-        return 2
-
-    client = Anthropic(api_key=api_key)
     languages = [args.lang]
 
     results = [
         process_url(
-            url, client, args.model, languages, not args.no_whisper, args.whisper_model
+            url, backend, languages, not args.no_whisper, args.whisper_model
         )
         for url in urls
     ]

@@ -3,7 +3,9 @@
 Pass a list of YouTube URLs and get back a clean, structured summary report you can
 keep in **OneNote**, plus optional **Word**, **PDF**, and full **transcript** files.
 
-Runs on **Windows** and **Ubuntu/macOS**. Summaries are produced by the **Claude API**.
+Runs on **Windows** and **Ubuntu/macOS**. Summaries are produced by Claude — either
+through your existing **Claude Code subscription** (Max/Pro, no API key) or the
+**Anthropic API** (with a key).
 
 ---
 
@@ -52,7 +54,6 @@ fallback.)
 git clone https://github.com/goowei/uSum.git
 cd uSum
 .\run.ps1 -Setup
-copy .env.example .env   # then edit .env and add your ANTHROPIC_API_KEY
 ```
 
 ### Ubuntu / macOS
@@ -60,7 +61,6 @@ copy .env.example .env   # then edit .env and add your ANTHROPIC_API_KEY
 git clone https://github.com/goowei/uSum.git
 cd uSum
 ./run.sh --setup
-cp .env.example .env     # then edit .env and add your ANTHROPIC_API_KEY
 ```
 
 ### Manual (any OS)
@@ -71,8 +71,16 @@ pip install -r requirements.txt
 # or: pip install -e .
 ```
 
-You need an Anthropic API key from <https://console.anthropic.com>. Put it in `.env`
-(`ANTHROPIC_API_KEY=...`), export it in your shell, or pass `--api-key`.
+### Choosing how Claude is reached (`--backend`)
+
+uSum auto-detects this, but you can force it:
+
+- **`cli` (no API key)** — uses the `claude` CLI in headless mode on your existing
+  **Claude Code subscription** (Max/Pro). Just have Claude Code installed and logged in
+  (`claude` on your PATH). This is the default when no API key is present.
+- **`api`** — uses the Anthropic API. Get a key from <https://console.anthropic.com>,
+  then put it in `.env` (`ANTHROPIC_API_KEY=...`), export it, or pass `--api-key`.
+  This is the default when a key is present. Copy `.env.example` to `.env` to start.
 
 ---
 
@@ -96,7 +104,8 @@ python -m usum https://youtu.be/VIDEO -f md,txt
 | `-i, --input FILE` | Read URLs from a file (one per line; `#` comments allowed). |
 | `-f, --formats` | `md,docx,pdf,txt` (default `md,txt`). |
 | `-o, --out DIR` | Output directory (default `./out`). |
-| `--model` | Claude model (default `claude-sonnet-4-6`, or `USUM_MODEL`). |
+| `--backend` | `cli` (subscription), `api` (key), or `auto` (default). |
+| `--model` | Claude model (default per backend — `claude-sonnet-4-6` / `sonnet`, or `USUM_MODEL`). |
 | `--lang` | Preferred caption language (default `en`). |
 | `--no-whisper` | Skip audio transcription; use captions only. |
 | `--whisper-model` | faster-whisper size: `tiny`/`base`/`small`/`medium`/`large-v3`. |
