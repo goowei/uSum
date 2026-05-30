@@ -48,8 +48,9 @@ def fetch_captions(
         log.warning("youtube-transcript-api not installed; skipping captions")
         return None
 
+    api = YouTubeTranscriptApi()
     try:
-        listing = YouTubeTranscriptApi.list_transcripts(video_id)
+        listing = api.list(video_id)
     except Exception as exc:  # TranscriptsDisabled, video unavailable, etc.
         log.debug("No transcript listing for %s: %s", video_id, exc)
         return None
@@ -71,19 +72,19 @@ def fetch_captions(
             return None
 
     try:
-        data = transcript.fetch()
+        fetched = transcript.fetch()
     except Exception as exc:
         log.debug("Failed fetching transcript for %s: %s", video_id, exc)
         return None
 
     return [
         TranscriptSegment(
-            start=float(d.get("start", 0.0)),
-            duration=float(d.get("duration", 0.0)),
-            text=" ".join(d.get("text", "").split()),
+            start=float(snippet.start),
+            duration=float(snippet.duration),
+            text=" ".join(snippet.text.split()),
         )
-        for d in data
-        if d.get("text", "").strip()
+        for snippet in fetched
+        if snippet.text.strip()
     ]
 
 

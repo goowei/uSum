@@ -141,20 +141,50 @@ def write_docx(markdown: str, path: str) -> None:
 # ----------------------------------------------------------------------------- #
 # PDF — Markdown -> HTML -> fpdf2, with a Unicode font when one can be found
 # ----------------------------------------------------------------------------- #
-_FONT_CANDIDATES = [
-    r"C:\Windows\Fonts\arial.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-    "/Library/Fonts/Arial.ttf",
-    "/System/Library/Fonts/Supplemental/Arial.ttf",
+# Each entry maps fpdf2 style codes ("", B, I, BI) to a TTF. The "" (regular)
+# file must exist for the set to be used; missing variants fall back to regular,
+# so write_html never hits an undefined font when it renders bold/italic spans.
+_FONT_SETS = [
+    {  # Windows Arial
+        "": r"C:\Windows\Fonts\arial.ttf",
+        "B": r"C:\Windows\Fonts\arialbd.ttf",
+        "I": r"C:\Windows\Fonts\ariali.ttf",
+        "BI": r"C:\Windows\Fonts\arialbi.ttf",
+    },
+    {  # Linux DejaVu
+        "": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "B": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "I": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
+        "BI": "/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf",
+    },
+    {  # Linux Liberation
+        "": "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "B": "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "I": "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf",
+        "BI": "/usr/share/fonts/truetype/liberation/LiberationSans-BoldItalic.ttf",
+    },
+    {  # macOS
+        "": "/Library/Fonts/Arial.ttf",
+        "B": "/Library/Fonts/Arial Bold.ttf",
+        "I": "/Library/Fonts/Arial Italic.ttf",
+        "BI": "/Library/Fonts/Arial Bold Italic.ttf",
+    },
 ]
 
 
-def _find_unicode_font() -> str | None:
-    for p in _FONT_CANDIDATES:
-        if os.path.exists(p):
-            return p
-    return None
+def _register_unicode_font(pdf, family: str = "body") -> bool:
+    """Register a Unicode font (all 4 styles) on the PDF. Returns True on success."""
+    for fonts in _FONT_SETS:
+        regular = fonts.get("")
+        if not regular or not os.path.exists(regular):
+            continue
+        for style in ("", "B", "I", "BI"):
+            path = fonts.get(style) or regular
+            if not os.path.exists(path):
+                path = regular
+            pdf.add_font(family, style, path)
+        return True
+    return False
 
 
 def write_pdf(markdown: str, path: str) -> None:
@@ -167,9 +197,7 @@ def write_pdf(markdown: str, path: str) -> None:
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
 
-    font_path = _find_unicode_font()
-    if font_path:
-        pdf.add_font("body", "", font_path)
+    if _register_unicode_font(pdf):
         pdf.set_font("body", size=11)
     else:
         # Core font only handles latin-1; transliterate anything outside it.
