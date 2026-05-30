@@ -1,0 +1,13 @@
+# Core
+anthropic>=0.40
+youtube-transcript-api==0.6.2
+yt-dlp>=2024.8.6
+python-dotenv>=1.0
+
+# Document output
+python-docx>=1.1
+fpdf2>=2.7
+markdown>=3.5
+
+# Audio fallback (no-captions videos). Heavy; optional but installed by default.
+faster-whisper>=1.0

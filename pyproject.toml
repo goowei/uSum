@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "usum"
+version = "0.1.0"
+description = "Summarise YouTube videos into OneNote-friendly reports (Markdown / Word / PDF / transcript)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "William Chang" }]
+dependencies = [
+    "anthropic>=0.40",
+    "youtube-transcript-api==0.6.2",
+    "yt-dlp>=2024.8.6",
+    "python-dotenv>=1.0",
+    "python-docx>=1.1",
+    "fpdf2>=2.7",
+    "markdown>=3.5",
+]
+
+[project.optional-dependencies]
+whisper = ["faster-whisper>=1.0"]
+
+[project.scripts]
+usum = "usum.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["usum*"]
